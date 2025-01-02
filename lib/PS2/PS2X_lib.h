@@ -97,7 +97,7 @@ public:
     byte configure(uint8_t clock, uint8_t command, uint8_t attribute, uint8_t data);
     byte configure(uint8_t clock, uint8_t command, uint8_t attribute, uint8_t data, bool pressures, bool rumble);
     bool buttonPressed(uint16_t buttonId);
-    bool buttonPressed(unsigned int buttonId);
+    //bool buttonPressed(unsigned int buttonId);
     unsigned int ButtonDataByte();
     boolean NewButtonState();
     boolean NewButtonState(unsigned int);

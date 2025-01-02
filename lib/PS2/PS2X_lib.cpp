@@ -125,15 +125,16 @@ byte PS2Controller::configure(
     return 0; // no error if here
 }
 
-boolean PS2Controller::buttonPressed(unsigned int button)
-{
-    return (NewButtonState(button) & buttonPressed(button));
-}
 
 boolean PS2Controller::buttonPressed(uint16_t button)
 {
     return ((~buttons & button) > 0);
 }
+
+// boolean PS2Controller::buttonPressed(unsigned int button)
+// {
+//     return (NewButtonState(button) & buttonPressed(button));
+// }
 
 boolean PS2Controller::NewButtonState()
 {

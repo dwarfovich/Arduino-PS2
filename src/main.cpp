@@ -25,6 +25,7 @@ void setup()
 {
     Serial.begin(baudRate);
     delay(startSerialMonitorDelay);
+    Serial.print("Starting configuration");
     configurationError = controller.configure(ps2_gamepad::clockPin,
                                              ps2_gamepad::commandPin,
                                              ps2_gamepad::selectPin,
@@ -50,7 +51,7 @@ void setup()
             break;
     }
 
-    const auto controllerType = controller.controllerType_();
+    const auto controllerType = controller.controllerType();
     switch (controllerType) {
         case 1: Serial.print("DualShock Controller found "); break;
         case 2: Serial.print("GuitarHero Controller found "); break;
