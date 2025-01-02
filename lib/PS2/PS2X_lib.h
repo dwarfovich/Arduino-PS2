@@ -1,72 +1,14 @@
 /******************************************************************
-*  Super amazing PS2 controller Arduino Library v1.6
-*		details and example sketch: 
-*			http://www.billporter.info/?p=240
-*
-*    Original code by Shutter on Arduino Forums
-*
-*    Revamped, made into lib by and supporting continued development:
-*              Bill Porter
-*              www.billporter.info
-*
-*	 Contributers:
-*		Eric Wetzel (thewetzel@gmail.com)
-*		Kurt Eckhardt
-*
-*  Lib version history
-*    0.1 made into library, added analog stick support. 
-*    0.2 fixed config_gamepad miss-spelling
-*        added new functions:
-*          NewButtonState();
-*          NewButtonState(unsigned int);
-*          ButtonPressed(unsigned int);
-*          ButtonReleased(unsigned int);
-*        removed 'PS' from begining of ever function
-*    1.0 found and fixed bug that wasn't configuring controller
-*        added ability to define pins
-*        added time checking to reconfigure controller if not polled enough
-*        Analog sticks and pressures all through 'ps2x.Analog()' function
-*        added:
-*          enableRumble();
-*          enablePressures();
-*    1.1  
-*        added some debug stuff for end user. Reports if no controller found
-*        added auto-increasing sentence delay to see if it helps compatibility.
-*    1.2
-*        found bad math by Shutter for original clock. Was running at 50kHz, not the required 500kHz. 
-*        fixed some of the debug reporting. 
-*	1.3 
-*	    Changed clock back to 50kHz. CuriousInventor says it's suppose to be 500kHz, but doesn't seem to work for everybody. 
-*	1.4
-*		Removed redundant functions.
-*		Fixed mode check to include two other possible modes the controller could be in.
-*       Added debug code enabled by compiler directives. See below to enable debug mode.
-*		Added button definitions for shapes as well as colors.
-*	1.41
-*		Some simple bug fixes
-*		Added Keywords.txt file
-*	1.5
-*		Added proper Guitar Hero compatibility
-*		Fixed issue with DEBUG mode, had to send serial at once instead of in bits
-*	1.6
-*		Changed config_gamepad() call to include rumble and pressures options
-*			This was to fix controllers that will only go into config mode once
-*			Old methods should still work for backwards compatibility 
-*
-*
-*This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or(at your option) any later version.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or(at your option) any later version.
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 <http://www.gnu.org/licenses/>
-*  
 ******************************************************************/
-
 
 // $$$$$$$$$$$$ DEBUG ENABLE SECTION $$$$$$$$$$$$$$$$
 // to debug ps2 controller, uncomment these two lines to print out debug to uart
-
 //#define PS2X_DEBUG
 //#define PS2X_COM_DEBUG
 
@@ -80,6 +22,10 @@ GNU General Public License for more details.
 #include <stdio.h>
 #include <stdint.h>
 #include <avr/io.h>
+
+namespace ps2{
+
+}
 
 #define CTRL_CLK        4
 #define CTRL_BYTE_DELAY 3
@@ -141,30 +87,28 @@ GNU General Public License for more details.
 #define PSAB_CROSS       15
 #define PSAB_SQUARE      16
 
-
 #define SET(x,y) (x|=(1<<y))
 #define CLR(x,y) (x&=(~(1<<y)))
 #define CHK(x,y) (x & (1<<y))
 #define TOG(x,y) (x^=(1<<y))
 
-
-
-class PS2X {
+class PS2Controller {
 public:
-    boolean Button(uint16_t);
+    byte configure(uint8_t clock, uint8_t command, uint8_t attribute, uint8_t data);
+    byte configure(uint8_t clock, uint8_t command, uint8_t attribute, uint8_t data, bool pressures, bool rumble);
+    bool buttonPressed(uint16_t buttonId);
+    bool buttonPressed(unsigned int buttonId);
     unsigned int ButtonDataByte();
     boolean NewButtonState();
     boolean NewButtonState(unsigned int);
-    boolean ButtonPressed(unsigned int);
     boolean ButtonReleased(unsigned int);
     void read_gamepad();
     void read_gamepad(boolean, byte);
     byte controllerType();
-    byte config_gamepad(uint8_t, uint8_t, uint8_t, uint8_t);
-    byte config_gamepad(uint8_t, uint8_t, uint8_t, uint8_t, bool, bool);
     void enableRumble();
     bool enablePressures();
     byte Analog(byte);
+
 private:
     unsigned char _gamepad_shiftinout (char);
     unsigned char PS2data[21];
@@ -174,22 +118,22 @@ private:
     unsigned int last_buttons;
     unsigned int buttons;
     uint8_t maskToBitNum(uint8_t);
-    uint8_t _clk_mask; 
-    volatile uint8_t *_clk_oreg;
-    uint8_t _cmd_mask; 
-    volatile uint8_t *_cmd_oreg;
-    uint8_t _att_mask; 
-    volatile uint8_t *_att_oreg;
-    uint8_t _dat_mask; 
-    volatile uint8_t *_dat_ireg;
+    uint8_t clockMask_; 
+    volatile uint8_t *clockOuputRegister_;
+    uint8_t commandMask_; 
+    volatile uint8_t *commandOutputRegister;
+    uint8_t attributeMask_; 
+    volatile uint8_t *attributeOutputRegister;
+    uint8_t dataMask_; 
+    volatile uint8_t *dataInputRegister_;
     unsigned long last_read;
     byte read_delay;
-    byte controller_type;
-    boolean en_Rumble;
-    boolean en_Pressures;
+    byte controllerType_;
+    bool enableRumble_;
+    bool enablePressures_;
 };
 
-#endif
+#endif // PS2X_lib_h
 
 
 
