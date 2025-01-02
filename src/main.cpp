@@ -1,4 +1,3 @@
-//#include "Arduino.h"
 #include "PS2X_lib.h"
 
 namespace ps2_gamepad{
@@ -13,23 +12,25 @@ namespace ps2_gamepad{
 
 PS2X ps2x;
 
-int  error   = 0;
+int  configurationError   = 0;
 byte vibrate = 0;
 
+constexpr int stopLoopDelay = 500;
+constexpr int readButtonsDelay = 50;
 constexpr int baudRate = 57600;
 constexpr int startSerialMonitorDelay = 300;
 
-void setup(){
+void setup() {
   Serial.begin(baudRate);
   delay(startSerialMonitorDelay);
-  error = ps2x.config_gamepad(ps2_gamepad::clockPin,
+  configurationError = ps2x.config_gamepad(ps2_gamepad::clockPin,
                             ps2_gamepad::commandPin,
                             ps2_gamepad::selectPin,
                             ps2_gamepad::dataPin,
                             COUNT_PRESSURES,
                             ENABLE_RUMBLE);
 
-  if(error==0){
+  if(configurationError==0){
     Serial.println("Found Controller, configured successful ");
     Serial.println("pressures = ");
     if(COUNT_PRESSURES){
@@ -49,28 +50,30 @@ void setup(){
     Serial.println("holding L1 or R1 will print out the analog stick values.");
     Serial.println("Note: Go to www.billporter.info for updates and to report bugs.");
   }
-  else if(error==1){
+  else if(configurationError==1){
     Serial.println("No controller found, check wiring, see readme.txt to enable debug. visit www.billporter.info for troubleshooting tips");    
   }
-  else if(error==2){
+  else if(configurationError==2){
     Serial.println("Controller found but not accepting commands. see readme.txt to enable debug. Visit www.billporter.info for troubleshooting tips");  
   }
-  else if(error==3){
+  else if(configurationError==3){
     Serial.println("Controller refusing to enter Pressures mode, may not support it. ");
   }
   
   const auto controllerType = ps2x.controllerType();
   switch(controllerType){
-    case 0:   Serial.print("Unknown Controller type found ");   break;
     case 1:   Serial.print("DualShock Controller found ");    break;
     case 2:   Serial.print("GuitarHero Controller found ");   break;
     case 3:   Serial.print("Wireless Sony DualShock Controller found ");    break;
+    default: Serial.print("Unknown Controller type found ");   break;
   }  
 }
 
 void loop(){
-  if(error==1) return;
-  if(error==2){
+  if(configurationError==1) {
+    Serial.println("Stopping main loop due errors.");
+    stop();
+  } else  if(configurationError==2){
       ps2x.read_gamepad();
       if(ps2x.ButtonPressed(GREEN_FRET))  Serial.println("Green Fret Pressed");
       if(ps2x.ButtonPressed(RED_FRET))    Serial.println("Red Fret Pressed");
@@ -137,5 +140,9 @@ void loop(){
         Serial.println(ps2x.Analog(PSS_RX), DEC);
       }
   }
-  delay(50);
+  delay(readButtonsDelay);
+}
+
+void stop(){
+  while(true){delay(stopLoopDelay);}
 }
