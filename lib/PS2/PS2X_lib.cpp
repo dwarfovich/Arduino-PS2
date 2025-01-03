@@ -1,10 +1,10 @@
 #include "PS2X_lib.h"
 
+#include <avr/io.h>
+#include <pins_arduino.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <avr/io.h>
-#include <pins_arduino.h>
 
 static byte enter_config[]    = { 0x01, 0x43, 0x00, 0x01, 0x00 };
 static byte set_mode[]        = { 0x01, 0x44, 0x00, 0x01, 0x03, 0x00, 0x00, 0x00, 0x00 };
@@ -21,7 +21,7 @@ byte PS2Controller::configure(uint8_t clockPin, uint8_t commandPin, uint8_t attr
 byte PS2Controller::configure(
     uint8_t clockPin, uint8_t commandPin, uint8_t attributePin, uint8_t dataPin, bool pressureMode, bool enableRumble)
 {
-    const uint8_t oldSreg = SREG; // *** KJE *** save away the current state of interrupts
+    const uint8_t oldSreg = SREG;
 
     clockMask_              = maskToBitNum(digitalPinToBitMask(clockPin));
     clockOuputRegister_     = portOutputRegister(digitalPinToPort(clockPin));
@@ -256,10 +256,9 @@ void PS2Controller::read_gamepad(boolean motor1, byte motor2)
     last_read = millis();
 }
 
-void PS2Controller::sendCommandString(byte string[], byte len)
+void PS2Controller::sendCommandString(byte string[], byte length)
 {
-    uint8_t old_sreg = SREG; // *** KJE *** save away the current state of interrupts
-
+    uint8_t oldSreg = SREG;
 #ifdef PS2X_COM_DEBUG
     byte temp[len];
     cli();                      // *** KJE *** disable for now
@@ -285,23 +284,25 @@ void PS2Controller::sendCommandString(byte string[], byte len)
 
 #else
     cli();
-    CLR(*attributeOutputRegister, attributeMask_); // low enable joystick
-    SREG = old_sreg;
-    for (int y = 0; y < len; y++)
-        _gamepad_shiftinout(string[y]);
+    clearBit(*attributeOutputRegister, attributeMask_); // low enable joystick
+    SREG = oldSreg;
+    for (int i = 0; i < length; ++i){
+        _gamepad_shiftinout(string[i]);
+    }
 
     cli();
     setBit(*attributeOutputRegister, attributeMask_); // high disable joystick
-    SREG = old_sreg;
-    delay(readDelay_); // wait a few
+    SREG = oldSreg;
+    delay(readDelay_);
 #endif
 }
 
 uint8_t PS2Controller::maskToBitNum(uint8_t mask)
 {
-    for (int y = 0; y < 8; y++) {
-        if (CHK(mask, y))
-            return y;
+    for (int i = 0; i < 8; ++i) {
+        if (getBit(mask, i)){
+            return i;
+        }
     }
     return 0;
 }

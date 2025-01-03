@@ -1,33 +1,32 @@
 #include "PS2X_lib.h"
 
-#define PS2_DAT   12
-#define PS2_CMD   11
-#define PS2_SEL   10
-#define PS2_CLK   13
-#define ENABLE_PRESSURES   true
-#define ENABLE_RUMBLE    true
+constexpr uint8_t selectPin = 10;
+constexpr uint8_t commandPin = 11;
+constexpr uint8_t dataPin = 12;
+constexpr uint8_t clockPin = 13;
+constexpr bool pressureMode = true;
+constexpr bool enableRumble = true;
+constexpr unsigned long baudRate = 57600;
+constexpr unsigned long serialMonitorStartDelay = 300;
+constexpr unsigned long readControllerDataDelay = 50;
 
 PS2Controller ps2x;
-
 int error=0;
 byte controllerType=0;
 byte vibrate=0;
 
-constexpr int baudRate = 57600;
-constexpr int serialMonitorStartDelay = 300;
-
 void setup(){
-  Serial.begin(57600);
+  Serial.begin(baudRate);
   delay(serialMonitorStartDelay);
-  error=ps2x.configure(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, ENABLE_PRESSURES, ENABLE_RUMBLE);
+  error=ps2x.configure(clockPin, commandPin, selectPin, dataPin, pressureMode, enableRumble);
   if(error==0){
     Serial.println("Found Controller, configured successful ");
     Serial.println("pressures = ");
-    if(ENABLE_PRESSURES) Serial.println("ture");
+    if(pressureMode) Serial.println("ture");
     else Serial.println("false");
     
     Serial.println("rumble = ");    
-    if(ENABLE_RUMBLE) Serial.println("ture");
+    if(enableRumble) Serial.println("ture");
     else Serial.println("false");
     Serial.println("Try out all the buttons, X will vibrate the controller, faster as you press harder;");
     Serial.println("holding L1 or R1 will print out the analog stick values.");
@@ -121,5 +120,5 @@ void loop(){
       Serial.println(ps2x.Analog(PSS_RX), DEC);
     }
   }
-  delay(50);
+  delay(readControllerDataDelay);
 }

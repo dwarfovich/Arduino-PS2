@@ -100,6 +100,11 @@ void clearBit(T& target, int bitNumber){
     target &= ~(1 << bitNumber);
 }
 
+template<typename T>
+void toggleBit(T& target, int bitNumber){
+    target ^= (1 << bitNumber);
+}
+
 #define SET(x, y) (x |= (1 << y))
 #define CLR(x, y) (x &= (~(1 << y)))
 #define CHK(x, y) (x & (1 << y))
