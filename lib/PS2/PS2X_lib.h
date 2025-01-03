@@ -119,7 +119,7 @@ class PS2Controller
 public:
     byte configure(uint8_t clock, uint8_t command, uint8_t attribute, uint8_t data);
     byte configure(uint8_t clock, uint8_t command, uint8_t attribute, uint8_t data, bool pressures, bool rumble);
-    bool buttonPressed(uint16_t buttonId);
+    bool buttonPressed(uint16_t buttonId) const;
     // bool buttonPressed(unsigned int buttonId);
     unsigned int ButtonDataByte();
     boolean      NewButtonState();
@@ -141,15 +141,14 @@ private: // methods
 
 private: // data
     unsigned char     PS2data[21];
-    unsigned char     i;
     unsigned int      last_buttons;
     unsigned int      buttons;
     uint8_t           clockMask_;
     volatile uint8_t *clockOuputRegister_;
     uint8_t           commandMask_;
-    volatile uint8_t *commandOutputRegister;
-    uint8_t           attributeMask_;
-    volatile uint8_t *attributeOutputRegister;
+    volatile uint8_t *commandOutputRegister_;
+    uint8_t           attentionMask_;
+    volatile uint8_t *attentionOutputRegister_;
     uint8_t           dataMask_;
     volatile uint8_t *dataInputRegister_;
     unsigned long     last_read;

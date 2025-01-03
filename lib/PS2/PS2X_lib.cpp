@@ -13,34 +13,34 @@ static byte exit_config[]     = { 0x01, 0x43, 0x00, 0x00, 0x5A, 0x5A, 0x5A, 0x5A
 static byte enable_rumble[]   = { 0x01, 0x4D, 0x00, 0x00, 0x01 };
 static byte type_read[]       = { 0x01, 0x45, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A };
 
-byte PS2Controller::configure(uint8_t clockPin, uint8_t commandPin, uint8_t attributePin, uint8_t dataPin)
+byte PS2Controller::configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin)
 {
-    return configure(clockPin, commandPin, attributePin, dataPin, false, false);
+    return configure(clockPin, commandPin, attentionPin, dataPin, false, false);
 }
 
 byte PS2Controller::configure(
-    uint8_t clockPin, uint8_t commandPin, uint8_t attributePin, uint8_t dataPin, bool pressureMode, bool enableRumble)
+    uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin, bool pressureMode, bool enableRumble)
 {
     const uint8_t oldSreg = SREG;
 
     clockMask_              = maskToBitNum(digitalPinToBitMask(clockPin));
     clockOuputRegister_     = portOutputRegister(digitalPinToPort(clockPin));
     commandMask_            = maskToBitNum(digitalPinToBitMask(commandPin));
-    commandOutputRegister   = portOutputRegister(digitalPinToPort(commandPin));
-    attributeMask_          = maskToBitNum(digitalPinToBitMask(attributePin));
-    attributeOutputRegister = portOutputRegister(digitalPinToPort(attributePin));
+    commandOutputRegister_   = portOutputRegister(digitalPinToPort(commandPin));
+    attentionMask_          = maskToBitNum(digitalPinToBitMask(attentionPin));
+    attentionOutputRegister_ = portOutputRegister(digitalPinToPort(attentionPin));
     dataMask_               = maskToBitNum(digitalPinToBitMask(dataPin));
     dataInputRegister_      = portInputRegister(digitalPinToPort(dataPin));
 
     // Configure pins.
     pinMode(clockPin, OUTPUT);
-    pinMode(attributePin, OUTPUT);
+    pinMode(attentionPin, OUTPUT);
     pinMode(commandPin, OUTPUT);
     pinMode(dataPin, INPUT);
     digitalWrite(dataPin, HIGH); // enable pull-up
 
     cli();
-    setBit(*commandOutputRegister, commandMask_);
+    setBit(*commandOutputRegister_, commandMask_);
     setBit(*clockOuputRegister_, clockMask_);
     SREG = oldSreg;
 
@@ -71,9 +71,9 @@ int PS2Controller::setControllerMode(bool pressureMode, bool enableRumble)
         delayMicroseconds(CTRL_BYTE_DELAY);
 
         cli();
-        setBit(*commandOutputRegister, commandMask_);
+        setBit(*commandOutputRegister_, commandMask_);
         setBit(*clockOuputRegister_, clockMask_);
-        clearBit(*attributeOutputRegister, attributeMask_); // low enable joystick
+        clearBit(*attentionOutputRegister_, attentionMask_); // low enable joystick
         SREG = oldSreg;
 
         delayMicroseconds(CTRL_BYTE_DELAY);
@@ -83,7 +83,7 @@ int PS2Controller::setControllerMode(bool pressureMode, bool enableRumble)
         }
 
         cli();             
-        setBit(*attributeOutputRegister, attributeMask_); // HI disable joystick
+        setBit(*attentionOutputRegister_, attentionMask_); // HI disable joystick
         SREG = oldSreg;                                  
 
         controllerType_ = temp[3];
@@ -126,7 +126,7 @@ int PS2Controller::setControllerMode(bool pressureMode, bool enableRumble)
     return 0;
 }
 
-boolean PS2Controller::buttonPressed(uint16_t button)
+boolean PS2Controller::buttonPressed(uint16_t button) const
 {
     return ((~buttons & button) > 0);
 }
@@ -165,11 +165,11 @@ unsigned char PS2Controller::_gamepad_shiftinout(char byte)
     const uint8_t oldSreg = SREG;
     uint8_t       result  = 0;
     cli();
-    for (i = 0; i < 8; ++i) {
+    for (int i = 0; i < 8; ++i) {
         if (getBit(byte, i)) {
-            setBit(*commandOutputRegister, commandMask_);
+            setBit(*commandOutputRegister_, commandMask_);
         } else {
-            clearBit(*commandOutputRegister, commandMask_);
+            clearBit(*commandOutputRegister_, commandMask_);
         }
         clearBit(*clockOuputRegister_, clockMask_);
 
@@ -182,7 +182,7 @@ unsigned char PS2Controller::_gamepad_shiftinout(char byte)
         }
         setBit(*clockOuputRegister_, clockMask_);
     }
-    setBit(*commandOutputRegister, commandMask_);
+    setBit(*commandOutputRegister_, commandMask_);
     SREG = oldSreg;
     delayMicroseconds(CTRL_BYTE_DELAY);
 
@@ -211,9 +211,9 @@ void PS2Controller::read_gamepad(boolean motor1, byte motor2)
         motor2 = map(motor2, 0, 255, 0x40, 0xFF); // noting below 40 will make it spin
 
     cli(); //*** KJE ***
-    SET(*commandOutputRegister, commandMask_);
+    SET(*commandOutputRegister_, commandMask_);
     SET(*clockOuputRegister_, clockMask_);
-    CLR(*attributeOutputRegister, attributeMask_); // low enable joystick
+    CLR(*attentionOutputRegister_, attentionMask_); // low enable joystick
     SREG = old_sreg;                               // *** KJE *** - Interrupts may be enabled again
 
     delayMicroseconds(CTRL_BYTE_DELAY);
@@ -231,7 +231,7 @@ void PS2Controller::read_gamepad(boolean motor1, byte motor2)
     }
 
     cli();
-    SET(*attributeOutputRegister, attributeMask_); // HI disable joystick
+    SET(*attentionOutputRegister_, attentionMask_); // HI disable joystick
     SREG = old_sreg;                               // Interrupts may be enabled again
 
 #ifdef PS2X_COM_DEBUG
@@ -283,14 +283,14 @@ void PS2Controller::sendCommandString(byte string[], byte length)
 
 #else
     cli();
-    clearBit(*attributeOutputRegister, attributeMask_); // low enable joystick
+    clearBit(*attentionOutputRegister_, attentionMask_); // low enable joystick
     SREG = oldSreg;
     for (int i = 0; i < length; ++i){
         _gamepad_shiftinout(string[i]);
     }
 
     cli();
-    setBit(*attributeOutputRegister, attributeMask_); // high disable joystick
+    setBit(*attentionOutputRegister_, attentionMask_); // high disable joystick
     SREG = oldSreg;
     delay(readDelay_);
 #endif
