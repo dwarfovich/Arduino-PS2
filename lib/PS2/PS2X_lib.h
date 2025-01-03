@@ -86,22 +86,26 @@ namespace ps2 {
 #define PSAB_SQUARE 16
 
 template<typename T>
-void setBit(T& target, int bitNumber){
+void setBit(T &target, int bitNumber)
+{
     target |= (1 << bitNumber);
 }
 
 template<typename T>
-bool getBit(const T& target, int bitNumber){
+bool getBit(const T &target, int bitNumber)
+{
     return (target & (1 << bitNumber));
 }
 
 template<typename T>
-void clearBit(T& target, int bitNumber){
+void clearBit(T &target, int bitNumber)
+{
     target &= ~(1 << bitNumber);
 }
 
 template<typename T>
-void toggleBit(T& target, int bitNumber){
+void toggleBit(T &target, int bitNumber)
+{
     target ^= (1 << bitNumber);
 }
 
@@ -129,17 +133,17 @@ public:
     byte         Analog(byte);
 
 private: // methods
-    int setControllerMode(bool countPressures, bool enableRumble);
+    int           setControllerMode(bool countPressures, bool enableRumble);
+    unsigned char _gamepad_shiftinout(char);
+    void          sendCommandString(byte *, byte);
+    void          reconfig_gamepad();
+    uint8_t       maskToBitNum(uint8_t);
 
 private: // data
-    unsigned char     _gamepad_shiftinout(char);
     unsigned char     PS2data[21];
-    void              sendCommandString(byte *, byte);
-    void              reconfig_gamepad();
     unsigned char     i;
     unsigned int      last_buttons;
     unsigned int      buttons;
-    uint8_t           maskToBitNum(uint8_t);
     uint8_t           clockMask_;
     volatile uint8_t *clockOuputRegister_;
     uint8_t           commandMask_;

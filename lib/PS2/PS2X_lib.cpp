@@ -32,12 +32,11 @@ byte PS2Controller::configure(
     dataMask_               = maskToBitNum(digitalPinToBitMask(dataPin));
     dataInputRegister_      = portInputRegister(digitalPinToPort(dataPin));
 
-    // Configure ports
+    // Configure pins.
     pinMode(clockPin, OUTPUT);
     pinMode(attributePin, OUTPUT);
     pinMode(commandPin, OUTPUT);
     pinMode(dataPin, INPUT);
-
     digitalWrite(dataPin, HIGH); // enable pull-up
 
     cli();
@@ -60,7 +59,7 @@ byte PS2Controller::configure(
     return setControllerMode(pressureMode, enableRumble);
 }
 
-int PS2Controller::setControllerMode(bool countPressures, bool enableRumble)
+int PS2Controller::setControllerMode(bool pressureMode, bool enableRumble)
 {
     byte temp[sizeof(type_read)];
     // readDelay_ will be saved to use later when reading data from controller.
@@ -94,7 +93,7 @@ int PS2Controller::setControllerMode(bool countPressures, bool enableRumble)
             sendCommandString(enable_rumble, sizeof(enable_rumble));
             enableRumble_ = true;
         }
-        if (countPressures) {
+        if (pressureMode) {
             sendCommandString(set_bytes_large, sizeof(set_bytes_large));
             enablePressures_ = true;
         }
@@ -102,7 +101,7 @@ int PS2Controller::setControllerMode(bool countPressures, bool enableRumble)
 
         read_gamepad();
 
-        if (countPressures) {
+        if (pressureMode) {
             if (PS2data[1] == 0x79)
                 break;
             if (PS2data[1] == 0x73)
@@ -184,7 +183,7 @@ unsigned char PS2Controller::_gamepad_shiftinout(char byte)
         setBit(*clockOuputRegister_, clockMask_);
     }
     setBit(*commandOutputRegister, commandMask_);
-    SREG = oldSreg; // *** *** KJE *** *** Interrupts may be enabled again
+    SREG = oldSreg;
     delayMicroseconds(CTRL_BYTE_DELAY);
 
     return result;
