@@ -43,7 +43,7 @@ void setup(){
     Serial.println("Controller refusing to enter Pressures mode, may not support it. ");
   }
   
-  controllerType=ps2x.controllerType();
+  controllerType=ps2x.type();
   switch(controllerType){
     case 0:   Serial.print("Unknown Controller type found ");   break;
     case 1:   Serial.print("DualShock Controller found ");    break;

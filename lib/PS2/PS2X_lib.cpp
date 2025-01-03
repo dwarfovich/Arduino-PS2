@@ -13,16 +13,15 @@ static byte exit_config[]     = { 0x01, 0x43, 0x00, 0x00, 0x5A, 0x5A, 0x5A, 0x5A
 static byte enable_rumble[]   = { 0x01, 0x4D, 0x00, 0x00, 0x01 };
 static byte type_read[]       = { 0x01, 0x45, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A };
 
-byte PS2Controller::configure(uint8_t clock, uint8_t command, uint8_t attribute, uint8_t data)
+byte PS2Controller::configure(uint8_t clockPin, uint8_t commandPin, uint8_t attributePin, uint8_t dataPin)
 {
-    return configure(clock, command, attribute, data, false, false);
+    return configure(clockPin, commandPin, attributePin, dataPin, false, false);
 }
 
 byte PS2Controller::configure(
-    uint8_t clockPin, uint8_t commandPin, uint8_t attributePin, uint8_t dataPin, bool pressures, bool rumble)
+    uint8_t clockPin, uint8_t commandPin, uint8_t attributePin, uint8_t dataPin, bool pressureMode, bool enableRumble)
 {
     const uint8_t oldSreg = SREG; // *** KJE *** save away the current state of interrupts
-    byte          temp[sizeof(type_read)];
 
     clockMask_              = maskToBitNum(digitalPinToBitMask(clockPin));
     clockOuputRegister_     = portOutputRegister(digitalPinToPort(clockPin));
@@ -41,58 +40,61 @@ byte PS2Controller::configure(
 
     digitalWrite(dataPin, HIGH); // enable pull-up
 
-    cli();                                     // *** KJE *** disable for now
-    SET(*commandOutputRegister, commandMask_); // SET(*_cmd_oreg,_cmd_mask);
-    SET(*clockOuputRegister_, clockMask_);
-    SREG = oldSreg; // *** *** KJE *** *** Interrupts may be enabled again
+    cli();
+    setBit(*commandOutputRegister, commandMask_);
+    setBit(*clockOuputRegister_, clockMask_);
+    SREG = oldSreg;
 
-    // new error checking. First, read gamepad a few times to see if it's talking
+    // Error checking. Reading controller's data for a few times, at the end PS2data[1] should be one of the values: 41, 73 or 79.
     read_gamepad();
     read_gamepad();
-
-    // see if it talked
-    if (PS2data[1] != 0x41 && PS2data[1] != 0x73
-        && PS2data[1] != 0x79) { // see if mode came back. If still anything but 41, 73 or 79, then it's not talking
+    if (PS2data[1] != 0x41 && PS2data[1] != 0x73 && PS2data[1] != 0x79) {
 #ifdef PS2X_DEBUG
         Serial.println("Controller mode not matched or no controller found");
-        Serial.print("Expected 0x41 or 0x73, got ");
+        Serial.print("Expected 0x41, 0x73 or 0x79, got ");
         Serial.println(PS2data[1], HEX);
 #endif
-        return 1; // return error code 1
+        return 1;
     }
 
-    // Try setting mode, increasing delays if needed.
-    read_delay = 1;
-    for (int y = 0; y <= 10; y++) {
+    return setControllerMode(pressureMode, enableRumble);
+}
+
+int PS2Controller::setControllerMode(bool countPressures, bool enableRumble)
+{
+    byte temp[sizeof(type_read)];
+    // readDelay_ will be saved to use later when reading data from controller.
+    readDelay_            = 1;
+    const uint8_t oldSreg = SREG;
+    for (int attempt = 0; attempt <= 10; ++attempt) {
         sendCommandString(enter_config, sizeof(enter_config)); // start config run
 
-        // read controllerType
         delayMicroseconds(CTRL_BYTE_DELAY);
 
-        cli(); // *** KJE *** disable for now
-        SET(*commandOutputRegister, commandMask_);
-        SET(*clockOuputRegister_, clockMask_);
-        CLR(*attributeOutputRegister, attributeMask_); // low enable joystick
-        SREG = oldSreg;                                // *** *** KJE *** *** Interrupts may be enabled again
+        cli();
+        setBit(*commandOutputRegister, commandMask_);
+        setBit(*clockOuputRegister_, clockMask_);
+        clearBit(*attributeOutputRegister, attributeMask_); // low enable joystick
+        SREG = oldSreg;
 
         delayMicroseconds(CTRL_BYTE_DELAY);
 
-        for (int i = 0; i < 9; i++) {
-            temp[i] = _gamepad_shiftinout(type_read[i]);
+        for (int j = 0; j < 9; j++) {
+            temp[j] = _gamepad_shiftinout(type_read[j]);
         }
 
-        cli();                                         // *** KJE *** disable for now
-        SET(*attributeOutputRegister, attributeMask_); // HI disable joystick
-        SREG = oldSreg;                                // *** *** KJE *** *** Interrupts may be enabled again
+        cli();             
+        setBit(*attributeOutputRegister, attributeMask_); // HI disable joystick
+        SREG = oldSreg;                                  
 
         controllerType_ = temp[3];
 
         sendCommandString(set_mode, sizeof(set_mode));
-        if (rumble) {
+        if (enableRumble) {
             sendCommandString(enable_rumble, sizeof(enable_rumble));
             enableRumble_ = true;
         }
-        if (pressures) {
+        if (countPressures) {
             sendCommandString(set_bytes_large, sizeof(set_bytes_large));
             enablePressures_ = true;
         }
@@ -100,7 +102,7 @@ byte PS2Controller::configure(
 
         read_gamepad();
 
-        if (pressures) {
+        if (countPressures) {
             if (PS2data[1] == 0x79)
                 break;
             if (PS2data[1] == 0x73)
@@ -110,21 +112,20 @@ byte PS2Controller::configure(
         if (PS2data[1] == 0x73)
             break;
 
-        if (y == 10) {
+        if (attempt == 10) {
 #ifdef PS2X_DEBUG
             Serial.println("Controller not accepting commands");
             Serial.print("mode stil set at");
             Serial.println(PS2data[1], HEX);
 #endif
-            return 2; // exit function with error
+            return 2;
         }
 
-        read_delay += 1; // add 1ms to read_delay
+        readDelay_ += 1;
     }
 
-    return 0; // no error if here
+    return 0;
 }
-
 
 boolean PS2Controller::buttonPressed(uint16_t button)
 {
@@ -162,30 +163,31 @@ byte PS2Controller::Analog(byte button)
 }
 unsigned char PS2Controller::_gamepad_shiftinout(char byte)
 {
-    uint8_t oldSreg = SREG; // *** KJE *** save away the current state of interrupts
+    const uint8_t oldSreg = SREG;
+    uint8_t       result  = 0;
+    cli();
+    for (i = 0; i < 8; ++i) {
+        if (getBit(byte, i)) {
+            setBit(*commandOutputRegister, commandMask_);
+        } else {
+            clearBit(*commandOutputRegister, commandMask_);
+        }
+        clearBit(*clockOuputRegister_, clockMask_);
 
-    unsigned char tmp = 0;
-    cli(); // *** KJE *** disable for now
-    for (i = 0; i < 8; i++) {
-        if (CHK(byte, i))
-            SET(*commandOutputRegister, commandMask_);
-        else
-            CLR(*commandOutputRegister, commandMask_);
-        CLR(*clockOuputRegister_, clockMask_);
-
-        SREG = oldSreg; // *** *** KJE *** *** Interrupts may be enabled again
+        SREG = oldSreg;
         delayMicroseconds(CTRL_CLK);
-        cli(); // *** KJE ***
+        cli();
 
-        if (CHK(*dataInputRegister_, dataMask_))
-            SET(tmp, i);
-        SET(*clockOuputRegister_, clockMask_);
+        if (getBit(*dataInputRegister_, dataMask_)) {
+            setBit(result, i);
+        }
+        setBit(*clockOuputRegister_, clockMask_);
     }
-    SET(*commandOutputRegister, commandMask_);
+    setBit(*commandOutputRegister, commandMask_);
     SREG = oldSreg; // *** *** KJE *** *** Interrupts may be enabled again
     delayMicroseconds(CTRL_BYTE_DELAY);
-    
-    return tmp;
+
+    return result;
 }
 
 void PS2Controller::read_gamepad()
@@ -201,8 +203,8 @@ void PS2Controller::read_gamepad(boolean motor1, byte motor2)
     if (temp > 1500) // waited to long
         reconfig_gamepad();
 
-    if (temp < read_delay) // waited too short
-        delay(read_delay - temp);
+    if (temp < readDelay_) // waited too short
+        delay(readDelay_ - temp);
 
     last_buttons = buttons; // store the previous buttons states
 
@@ -282,16 +284,16 @@ void PS2Controller::sendCommandString(byte string[], byte len)
     Serial.println("");
 
 #else
-    cli();                                         // *** KJE *** disable for now
+    cli();
     CLR(*attributeOutputRegister, attributeMask_); // low enable joystick
-    SREG = old_sreg;                               // *** *** KJE *** *** Interrupts may be enabled again
+    SREG = old_sreg;
     for (int y = 0; y < len; y++)
         _gamepad_shiftinout(string[y]);
 
-    cli();                                         // *** KJE *** disable for now
-    SET(*attributeOutputRegister, attributeMask_); // high disable joystick
-    SREG = old_sreg;                               // *** *** KJE *** *** Interrupts may be enabled again
-    delay(read_delay);                             // wait a few
+    cli();
+    setBit(*attributeOutputRegister, attributeMask_); // high disable joystick
+    SREG = old_sreg;
+    delay(readDelay_); // wait a few
 #endif
 }
 
@@ -304,7 +306,7 @@ uint8_t PS2Controller::maskToBitNum(uint8_t mask)
     return 0;
 }
 
-byte PS2Controller::controllerType()
+byte PS2Controller::type() const
 {
     if (controllerType_ == 0x03) {
         return 1;
