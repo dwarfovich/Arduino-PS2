@@ -62,8 +62,7 @@ byte PS2Controller::configure(
 int PS2Controller::setControllerMode(bool pressureMode, bool enableRumble)
 {
     byte temp[sizeof(type_read)];
-    // readDelay_ will be saved to use later when reading data from controller.
-    readDelay_            = 1;
+    readDelay_            = 1; // readDelay_ will be saved to use later when reading data from controller.
     const uint8_t oldSreg = SREG;
     for (int attempt = 0; attempt <= 10; ++attempt) {
         sendCommandString(enter_config, sizeof(enter_config)); // start config run
