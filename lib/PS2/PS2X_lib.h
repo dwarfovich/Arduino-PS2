@@ -16,18 +16,6 @@ details. <http://www.gnu.org/licenses/>
 
 #include <Arduino.h>
 
-#include <math.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <avr/io.h>
-
-namespace ps2 {
-
-}
-
-inline constexpr unsigned long controlDelayUs = 4;
-inline constexpr unsigned long controlByteDelayUs = 3;
-
 // These are our button constants
 #define PSB_SELECT 0x0001
 #define PSB_L3 0x0002
@@ -109,29 +97,84 @@ constexpr void toggleBit(T &target, int bitNumber)
     target ^= (1 << bitNumber);
 }
 
-#define SET(x, y) (x |= (1 << y))
-#define CLR(x, y) (x &= (~(1 << y)))
-#define CHK(x, y) (x & (1 << y))
-#define TOG(x, y) (x ^= (1 << y))
+namespace ps2 {
+namespace buttons{
+    inline constexpr uint16_t select = 0x0001;
+    inline constexpr uint16_t l3 = 0x0002;
+    inline constexpr uint16_t r3 = 0x0004;
+    inline constexpr uint16_t start = 0x0008;
+    inline constexpr uint16_t padUp = 0x0010;
+    inline constexpr uint16_t padRight = 0x0020;
+    inline constexpr uint16_t padDown = 0x0040;
+    inline constexpr uint16_t padLeft = 0x0080;
+    inline constexpr uint16_t l2 = 0x0100;
+    inline constexpr uint16_t r2 = 0x0200;
+    inline constexpr uint16_t l1 = 0x0400;
+    inline constexpr uint16_t r1 = 0x0800;
+    inline constexpr uint16_t green = 0x1000;
+    inline constexpr uint16_t red = 0x2000;
+    inline constexpr uint16_t blue = 0x4000;
+    inline constexpr uint16_t pink = 0x8000;
+    inline constexpr const uint16_t& triangle = green;
+    inline constexpr const uint16_t circle = red;
+    inline constexpr const uint16_t cross = blue;
+    inline constexpr const uint16_t square = pink;
+}
 
-class PS2Controller
+namespace stick{
+    inline constexpr uint16_t rx = 5;
+    inline constexpr uint16_t ry = 6;
+    inline constexpr uint16_t lx = 7;
+    inline constexpr uint16_t ly = 8;
+}
+
+namespace analog_buttons{
+    inline constexpr uint16_t padRight = 9;
+    inline constexpr uint16_t padLeft = 10;
+    inline constexpr uint16_t padUp = 11;
+    inline constexpr uint16_t padDown = 12;
+    inline constexpr uint16_t l2 = 19;
+    inline constexpr uint16_t r2 = 20;
+    inline constexpr uint16_t l1 = 17;
+    inline constexpr uint16_t r1 = 18;
+    inline constexpr uint16_t green = 13;
+    inline constexpr uint16_t red = 14;
+    inline constexpr uint16_t blue = 15;
+    inline constexpr uint16_t pink = 16;
+    inline constexpr const uint16_t& triangle = green;
+    inline constexpr const uint16_t circle = red;
+    inline constexpr const uint16_t cross = blue;
+    inline constexpr const uint16_t square = pink;
+}
+
+namespace commands {
+inline constexpr byte startConfiguration[] = { 0x01, 0x43, 0x00, 0x01, 0x00 };
+inline constexpr byte setMode[]            = { 0x01, 0x44, 0x00, 0x01, 0x03, 0x00, 0x00, 0x00, 0x00 };
+inline constexpr byte setAuxData[]         = { 0x01, 0x4F, 0x00, 0xFF, 0xFF, 0x03, 0x00, 0x00, 0x00 };
+inline constexpr byte stopConfiguration[]  = { 0x01, 0x43, 0x00, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A };
+inline constexpr byte enableRumble[]       = { 0x01, 0x4D, 0x00, 0x00, 0x01 };
+inline constexpr byte readType[]           = { 0x01, 0x45, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A };
+} // namespace commands
+
+class Controller
 {
 public:
     byte configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin);
-    byte configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin, bool pressureMode, bool enableRumble);
-    bool buttonPressed(uint16_t buttonId) const;
+    byte configure(uint8_t clockPin,
+                   uint8_t commandPin,
+                   uint8_t attentionPin,
+                   uint8_t dataPin,
+                   bool    pressureMode,
+                   bool    enableRumble);
     byte type() const;
-
-    // bool buttonPressed(unsigned int buttonId);
-    unsigned int ButtonDataByte();
-    boolean      NewButtonState();
-    boolean      NewButtonState(unsigned int);
-    boolean      ButtonReleased(unsigned int);
-    void         readData();
-    void         readData(boolean, byte);
-    void         enableRumble();
-    bool         enablePressures();
-    byte         Analog(byte);
+    bool buttonPressed(uint16_t buttonId) const;
+    bool buttonsStateChanged();
+    bool buttonStateChanged(unsigned int buttonId);
+    void readData();
+    void readData(bool motor1, byte motor2);
+    void enableRumble();
+    bool enablePressures();
+    byte analogButtonState(byte buttonId);
 
 private: // methods
     int     setControllerMode(bool countPressures, bool enableRumble);
@@ -141,8 +184,10 @@ private: // methods
     uint8_t maskToBitNum(uint8_t);
 
 private: // data
-    inline static constexpr uint8_t baseDataSize_ = 9;
-    inline static constexpr uint8_t auxDataSize_  = 12;
+    inline static constexpr unsigned long controlDelayUs     = 4;
+    inline static constexpr unsigned long controlByteDelayUs = 3;
+    inline static constexpr uint8_t       baseDataSize_      = 9;
+    inline static constexpr uint8_t       auxDataSize_       = 12;
 
     unsigned char  data_[baseDataSize_ + auxDataSize_];
     unsigned int   previousButtonsState_;
@@ -161,5 +206,7 @@ private: // data
     bool           enableRumble_;
     bool           pressureMode_;
 };
+
+} // namespace ps2
 
 #endif // PS2X_lib_h

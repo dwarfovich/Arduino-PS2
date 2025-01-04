@@ -10,7 +10,7 @@ constexpr unsigned long baudRate                = 57600;
 constexpr unsigned long serialMonitorStartDelay = 300;
 constexpr unsigned long readControllerDataDelay = 50;
 
-PS2Controller ps2x;
+ps2::Controller ps2x;
 int           error          = 0;
 byte          controllerType = 0;
 byte          vibrate        = 0;
@@ -87,7 +87,7 @@ void loop()
 
         if (ps2x.buttonPressed(ORANGE_FRET)) {
             Serial.print("Wammy Bar Position:");
-            Serial.println(ps2x.Analog(WHAMMY_BAR), DEC);
+            Serial.println(ps2x.analogButtonState(WHAMMY_BAR), DEC);
         }
     } else {
         ps2x.readData(false, vibrate);
@@ -98,23 +98,23 @@ void loop()
 
         if (ps2x.buttonPressed(PSB_PAD_UP)) {
             Serial.print("Up held this hard: ");
-            Serial.println(ps2x.Analog(PSAB_PAD_UP), DEC);
+            Serial.println(ps2x.analogButtonState(PSAB_PAD_UP), DEC);
         }
         if (ps2x.buttonPressed(PSB_PAD_RIGHT)) {
             Serial.print("Right held this hard: ");
-            Serial.println(ps2x.Analog(PSAB_PAD_RIGHT), DEC);
+            Serial.println(ps2x.analogButtonState(PSAB_PAD_RIGHT), DEC);
         }
         if (ps2x.buttonPressed(PSB_PAD_LEFT)) {
             Serial.print("LEFT held this hard: ");
-            Serial.println(ps2x.Analog(PSAB_PAD_LEFT), DEC);
+            Serial.println(ps2x.analogButtonState(PSAB_PAD_LEFT), DEC);
         }
         if (ps2x.buttonPressed(PSB_PAD_DOWN)) {
             Serial.print("DOWN held this hard: ");
-            Serial.println(ps2x.Analog(PSAB_PAD_DOWN), DEC);
+            Serial.println(ps2x.analogButtonState(PSAB_PAD_DOWN), DEC);
         }
 
-        vibrate = ps2x.Analog(PSAB_CROSS);
-        if (ps2x.NewButtonState()) {
+        vibrate = ps2x.analogButtonState(PSAB_CROSS);
+        if (ps2x.buttonsStateChanged()) {
             if (ps2x.buttonPressed(PSB_L3))
                 Serial.println("L3 pressed");
             if (ps2x.buttonPressed(PSB_R3))
@@ -136,13 +136,13 @@ void loop()
 
         if (ps2x.buttonPressed(PSB_L1) || ps2x.buttonPressed(PSB_R1)) {
             Serial.print("Stick Values:");
-            Serial.print(ps2x.Analog(PSS_LY), DEC); // Left stick, Y axis. Other options: LX, RY, RX
+            Serial.print(ps2x.analogButtonState(PSS_LY), DEC); // Left stick, Y axis. Other options: LX, RY, RX
             Serial.print(",");
-            Serial.print(ps2x.Analog(PSS_LX), DEC);
+            Serial.print(ps2x.analogButtonState(PSS_LX), DEC);
             Serial.print(",");
-            Serial.print(ps2x.Analog(PSS_RY), DEC);
+            Serial.print(ps2x.analogButtonState(PSS_RY), DEC);
             Serial.print(",");
-            Serial.println(ps2x.Analog(PSS_RX), DEC);
+            Serial.println(ps2x.analogButtonState(PSS_RX), DEC);
         }
     }
     delay(readControllerDataDelay);

@@ -6,19 +6,18 @@
 #include <stdio.h>
 #include <stdint.h>
 
-static constexpr byte enter_config[]    = { 0x01, 0x43, 0x00, 0x01, 0x00 };
-static constexpr byte set_mode[]        = { 0x01, 0x44, 0x00, 0x01, 0x03, 0x00, 0x00, 0x00, 0x00 };
-static constexpr byte set_bytes_large[] = { 0x01, 0x4F, 0x00, 0xFF, 0xFF, 0x03, 0x00, 0x00, 0x00 };
-static constexpr byte exit_config[]     = { 0x01, 0x43, 0x00, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A };
-static constexpr byte enable_rumble[]   = { 0x01, 0x4D, 0x00, 0x00, 0x01 };
-static constexpr byte readTypeCommand[] = { 0x01, 0x45, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A };
 
-byte PS2Controller::configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin)
+
+
+
+namespace ps2{
+
+byte Controller::configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin)
 {
     return configure(clockPin, commandPin, attentionPin, dataPin, false, false);
 }
 
-byte PS2Controller::configure(
+byte Controller::configure(
     uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin, bool pressureMode, bool enableRumble)
 {
     const uint8_t oldSreg = SREG;
@@ -60,13 +59,13 @@ byte PS2Controller::configure(
     return setControllerMode(pressureMode, enableRumble);
 }
 
-int PS2Controller::setControllerMode(bool pressureMode, bool enableRumble)
+int Controller::setControllerMode(bool pressureMode, bool enableRumble)
 {
-    byte answer[sizeof(readTypeCommand)];
+    byte answer[sizeof(commands::readType)];
     readDelay_            = 1; // readDelay_ will be saved to use later when reading data from controller.
     const uint8_t oldSreg = SREG;
     for (uint8_t attempt = 0; attempt <= 10; ++attempt) {
-        sendCommandString(enter_config, sizeof(enter_config)); // start config run
+        sendCommandString(commands::startConfiguration, sizeof(commands::startConfiguration)); // start config run
         delayMicroseconds(controlByteDelayUs);
 
         cli();
@@ -77,8 +76,8 @@ int PS2Controller::setControllerMode(bool pressureMode, bool enableRumble)
 
         delayMicroseconds(controlByteDelayUs);
 
-        for (uint8_t j = 0; j < sizeof(readTypeCommand); ++j) {
-            answer[j] = sendByte(readTypeCommand[j]);
+        for (uint8_t j = 0; j < sizeof(commands::readType); ++j) {
+            answer[j] = sendByte(commands::readType[j]);
         }
 
         cli();
@@ -87,16 +86,16 @@ int PS2Controller::setControllerMode(bool pressureMode, bool enableRumble)
 
         controllerType_ = answer[3];
 
-        sendCommandString(set_mode, sizeof(set_mode));
+        sendCommandString(commands::setMode, sizeof(commands::setMode));
         if (enableRumble) {
-            sendCommandString(enable_rumble, sizeof(enable_rumble));
+            sendCommandString(commands::enableRumble, sizeof(commands::enableRumble));
             enableRumble_ = true;
         }
         if (pressureMode) {
-            sendCommandString(set_bytes_large, sizeof(set_bytes_large));
+            sendCommandString(commands::setAuxData, sizeof(commands::setAuxData));
             pressureMode = true;
         }
-        sendCommandString(exit_config, sizeof(exit_config));
+        sendCommandString(commands::stopConfiguration, sizeof(commands::stopConfiguration));
 
         readData();
 
@@ -125,7 +124,7 @@ int PS2Controller::setControllerMode(bool pressureMode, bool enableRumble)
     return 0;
 }
 
-boolean PS2Controller::buttonPressed(uint16_t button) const
+boolean Controller::buttonPressed(uint16_t button) const
 {
     return ((~buttonsState_ & button) > 0);
 }
@@ -135,32 +134,32 @@ boolean PS2Controller::buttonPressed(uint16_t button) const
 //     return (NewButtonState(button) & buttonPressed(button));
 // }
 
-boolean PS2Controller::NewButtonState()
+boolean Controller::buttonsStateChanged()
 {
     return ((previousButtonsState_ ^ buttonsState_) > 0);
 }
 
-boolean PS2Controller::NewButtonState(unsigned int button)
+boolean Controller::buttonStateChanged(unsigned int buttonId)
 {
-    return (((previousButtonsState_ ^ buttonsState_) & button) > 0);
+    return (((previousButtonsState_ ^ buttonsState_) & buttonId) > 0);
 }
 
-boolean PS2Controller::ButtonReleased(unsigned int button)
+// boolean PS2Controller::ButtonReleased(unsigned int buttonId)
+// {
+//     return ((buttonStateChanged(buttonId)) & ((~previousButtonsState_ & buttonId) > 0));
+// }
+
+// unsigned int PS2Controller::ButtonDataByte()
+// {
+//     return (~buttonsState_);
+// }
+
+byte Controller::analogButtonState(byte  buttonId)
 {
-    return ((NewButtonState(button)) & ((~previousButtonsState_ & button) > 0));
+    return data_[ buttonId];
 }
 
-unsigned int PS2Controller::ButtonDataByte()
-{
-    return (~buttonsState_);
-}
-
-byte PS2Controller::Analog(byte button)
-{
-    return data_[button];
-}
-
-byte PS2Controller::sendByte(byte inputByte)
+byte Controller::sendByte(byte inputByte)
 {
     const uint8_t oldSreg = SREG;
     uint8_t       result  = 0;
@@ -189,12 +188,12 @@ byte PS2Controller::sendByte(byte inputByte)
     return result;
 }
 
-void PS2Controller::readData()
+void Controller::readData()
 {
     readData(false, 0);
 }
 
-void PS2Controller::readData(boolean motor1, byte motor2)
+void Controller::readData(boolean motor1, byte motor2)
 {
     uint8_t old_sreg = SREG;
 
@@ -255,7 +254,7 @@ void PS2Controller::readData(boolean motor1, byte motor2)
     lastDataReadTimestamp_ = millis();
 }
 
-void PS2Controller::sendCommandString(const byte string[], uint8_t size)
+void Controller::sendCommandString(const byte string[], uint8_t size)
 {
     const uint8_t oldSreg = SREG;
 #ifdef PS2X_COM_DEBUG
@@ -296,7 +295,7 @@ void PS2Controller::sendCommandString(const byte string[], uint8_t size)
 #endif
 }
 
-uint8_t PS2Controller::maskToBitNum(uint8_t mask)
+uint8_t Controller::maskToBitNum(uint8_t mask)
 {
     for (uint8_t i = 0; i < 8; ++i) {
         if (getBit(mask, i)) {
@@ -306,7 +305,7 @@ uint8_t PS2Controller::maskToBitNum(uint8_t mask)
     return 0;
 }
 
-byte PS2Controller::type() const
+byte Controller::type() const
 {
     if (controllerType_ == 0x03) {
         return 1;
@@ -317,19 +316,19 @@ byte PS2Controller::type() const
     return 0;
 }
 
-void PS2Controller::enableRumble()
+void Controller::enableRumble()
 {
-    sendCommandString(enter_config, sizeof(enter_config));
-    sendCommandString(enable_rumble, sizeof(enable_rumble));
-    sendCommandString(exit_config, sizeof(exit_config));
+    sendCommandString(commands::startConfiguration, sizeof(commands::startConfiguration));
+    sendCommandString(commands::enableRumble, sizeof(commands::enableRumble));
+    sendCommandString(commands::stopConfiguration, sizeof(commands::stopConfiguration));
     enableRumble_ = true;
 }
 
-bool PS2Controller::enablePressures()
+bool Controller::enablePressures()
 {
-    sendCommandString(enter_config, sizeof(enter_config));
-    sendCommandString(set_bytes_large, sizeof(set_bytes_large));
-    sendCommandString(exit_config, sizeof(exit_config));
+    sendCommandString(commands::startConfiguration, sizeof(commands::startConfiguration));
+    sendCommandString(commands::setAuxData, sizeof(commands::setAuxData));
+    sendCommandString(commands::stopConfiguration, sizeof(commands::stopConfiguration));
 
     readData();
     //readData();
@@ -341,15 +340,17 @@ bool PS2Controller::enablePressures()
     return true;
 }
 
-void PS2Controller::reconfigureController()
+void Controller::reconfigureController()
 {
-    sendCommandString(enter_config, sizeof(enter_config));
-    sendCommandString(set_mode, sizeof(set_mode));
+    sendCommandString(commands::startConfiguration, sizeof(commands::startConfiguration));
+    sendCommandString(commands::setMode, sizeof(commands::setMode));
     if (enableRumble_) {
-        sendCommandString(enable_rumble, sizeof(enable_rumble));
+        sendCommandString(commands::enableRumble, sizeof(commands::enableRumble));
     }
     if (pressureMode_) {
-        sendCommandString(set_bytes_large, sizeof(set_bytes_large));
+        sendCommandString(commands::setAuxData, sizeof(commands::setAuxData));
     }
-    sendCommandString(exit_config, sizeof(exit_config));
+    sendCommandString(commands::stopConfiguration, sizeof(commands::stopConfiguration));
+}
+
 }
