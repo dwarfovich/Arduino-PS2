@@ -25,8 +25,8 @@ namespace ps2 {
 
 }
 
-#define CTRL_CLK 4
-#define CTRL_BYTE_DELAY 3
+inline constexpr unsigned long controlDelayUs = 4;
+inline constexpr unsigned long controlByteDelayUs = 3;
 
 // These are our button constants
 #define PSB_SELECT 0x0001
@@ -86,25 +86,25 @@ namespace ps2 {
 #define PSAB_SQUARE 16
 
 template<typename T>
-void setBit(T &target, int bitNumber)
+constexpr void setBit(T &target, int bitNumber)
 {
     target |= (1 << bitNumber);
 }
 
 template<typename T>
-bool getBit(const T &target, int bitNumber)
+constexpr bool getBit(const T &target, int bitNumber)
 {
     return (target & (1 << bitNumber));
 }
 
 template<typename T>
-void clearBit(T &target, int bitNumber)
+constexpr void clearBit(T &target, int bitNumber)
 {
     target &= ~(1 << bitNumber);
 }
 
 template<typename T>
-void toggleBit(T &target, int bitNumber)
+constexpr void toggleBit(T &target, int bitNumber)
 {
     target ^= (1 << bitNumber);
 }
@@ -117,45 +117,49 @@ void toggleBit(T &target, int bitNumber)
 class PS2Controller
 {
 public:
-    byte configure(uint8_t clock, uint8_t command, uint8_t attribute, uint8_t data);
-    byte configure(uint8_t clock, uint8_t command, uint8_t attribute, uint8_t data, bool pressures, bool rumble);
+    byte configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin);
+    byte configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin, bool pressureMode, bool enableRumble);
     bool buttonPressed(uint16_t buttonId) const;
+    byte type() const;
+
     // bool buttonPressed(unsigned int buttonId);
     unsigned int ButtonDataByte();
     boolean      NewButtonState();
     boolean      NewButtonState(unsigned int);
     boolean      ButtonReleased(unsigned int);
-    void         read_gamepad();
-    void         read_gamepad(boolean, byte);
-    byte         type() const;
+    void         readData();
+    void         readData(boolean, byte);
     void         enableRumble();
     bool         enablePressures();
     byte         Analog(byte);
 
 private: // methods
-    int           setControllerMode(bool countPressures, bool enableRumble);
-    unsigned char _gamepad_shiftinout(char);
-    void          sendCommandString(byte *, byte);
-    void          reconfig_gamepad();
-    uint8_t       maskToBitNum(uint8_t);
+    int     setControllerMode(bool countPressures, bool enableRumble);
+    byte    sendByte(byte inputByte);
+    void    sendCommandString(const byte string[], byte size);
+    void    reconfigureController();
+    uint8_t maskToBitNum(uint8_t);
 
 private: // data
-    unsigned char     PS2data[21];
-    unsigned int      last_buttons;
-    unsigned int      buttons;
-    uint8_t           clockMask_;
-    volatile uint8_t *clockOuputRegister_;
-    uint8_t           commandMask_;
-    volatile uint8_t *commandOutputRegister_;
-    uint8_t           attentionMask_;
-    volatile uint8_t *attentionOutputRegister_;
-    uint8_t           dataMask_;
-    volatile uint8_t *dataInputRegister_;
-    unsigned long     last_read;
-    byte              readDelay_;
-    byte              controllerType_;
-    bool              enableRumble_;
-    bool              enablePressures_;
+    inline static constexpr uint8_t baseDataSize_ = 9;
+    inline static constexpr uint8_t auxDataSize_  = 12;
+
+    unsigned char  data_[baseDataSize_ + auxDataSize_];
+    unsigned int   previousButtonsState_;
+    unsigned int   buttonsState_;
+    byte           clockMask_;
+    volatile byte *clockOuputRegister_;
+    byte           commandMask_;
+    volatile byte *commandOutputRegister_;
+    byte           attentionMask_;
+    volatile byte *attentionOutputRegister_;
+    byte           dataMask_;
+    volatile byte *dataInputRegister_;
+    unsigned long  lastDataReadTimestamp_;
+    byte           readDelay_;
+    byte           controllerType_;
+    bool           enableRumble_;
+    bool           pressureMode_;
 };
 
 #endif // PS2X_lib_h

@@ -60,7 +60,7 @@ void loop()
     if (error == 1)
         return;
     if (error == 2) {
-        ps2x.read_gamepad();
+        ps2x.readData();
         if (ps2x.buttonPressed(GREEN_FRET))
             Serial.println("Green Fret Pressed");
         if (ps2x.buttonPressed(RED_FRET))
@@ -90,7 +90,7 @@ void loop()
             Serial.println(ps2x.Analog(WHAMMY_BAR), DEC);
         }
     } else {
-        ps2x.read_gamepad(false, vibrate);
+        ps2x.readData(false, vibrate);
         if (ps2x.buttonPressed(PSB_START))
             Serial.println("Start is being held");
         if (ps2x.buttonPressed(PSB_SELECT))
