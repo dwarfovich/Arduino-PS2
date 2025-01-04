@@ -1,0 +1,20 @@
+{
+  "name": "PS2",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": "PS2",
+  "repository":
+  {
+    "type": "git",
+    "url": "git@github.com:dwarfovich/Arduino-PS2.git"
+  },
+  "authors":
+  [
+    
+  ],
+  "license": "LGPL v3",
+  "dependencies": {
+  },
+  "frameworks": "*",
+  "platforms": "*"
+}
