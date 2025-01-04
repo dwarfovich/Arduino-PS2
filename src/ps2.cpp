@@ -1,14 +1,10 @@
-#include "PS2X_lib.h"
+#include "ps2.hpp"
 
 #include <avr/io.h>
 #include <pins_arduino.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
-
-
-
-
 
 namespace ps2{
 
