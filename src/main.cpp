@@ -61,23 +61,23 @@ void loop()
         return;
     if (error == 2) {
         ps2x.readData();
-        if (ps2x.buttonPressed(GREEN_FRET))
+        if (ps2x.buttonPressed(PSG_GREEN_FRET))
             Serial.println("Green Fret Pressed");
-        if (ps2x.buttonPressed(RED_FRET))
+        if (ps2x.buttonPressed(PSG_RED_FRET))
             Serial.println("Red Fret Pressed");
-        if (ps2x.buttonPressed(YELLOW_FRET))
+        if (ps2x.buttonPressed(PSG_YELLOW_FRET))
             Serial.println("Yellow Fret Pressed");
-        if (ps2x.buttonPressed(BLUE_FRET))
+        if (ps2x.buttonPressed(PSG_BLUE_FRET))
             Serial.println("Blue Fret Pressed");
-        if (ps2x.buttonPressed(ORANGE_FRET))
+        if (ps2x.buttonPressed(PSG_ORANGE_FRET))
             Serial.println("Orange Fret Pressed");
 
-        if (ps2x.buttonPressed(STAR_POWER))
+        if (ps2x.buttonPressed(PSG_STAR_POWER))
             Serial.println("Star Power Command");
 
-        if (ps2x.buttonPressed(UP_STRUM))
+        if (ps2x.buttonPressed(PSG_UP_STRUM))
             Serial.println("Up Strum");
-        if (ps2x.buttonPressed(DOWN_STRUM))
+        if (ps2x.buttonPressed(PSG_DOWN_STRUM))
             Serial.println("DOWN Strum");
 
         if (ps2x.buttonPressed(PSB_START))
@@ -85,9 +85,9 @@ void loop()
         if (ps2x.buttonPressed(PSB_SELECT))
             Serial.println("Select is being held");
 
-        if (ps2x.buttonPressed(ORANGE_FRET)) {
+        if (ps2x.buttonPressed(PSG_ORANGE_FRET)) {
             Serial.print("Wammy Bar Position:");
-            Serial.println(ps2x.analogButtonState(WHAMMY_BAR), DEC);
+            Serial.println(ps2x.analogButtonState(PSG_WHAMMY_BAR), DEC);
         }
     } else {
         ps2x.readData(false, vibrate);

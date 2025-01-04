@@ -4,6 +4,8 @@ License as published by the Free Software Foundation, either version 3 of the Li
 version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
 implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
 details. <http://www.gnu.org/licenses/>
+*******************************************************************
+The original library code is inside archive/OriginalPS2Lib folder.
 ******************************************************************/
 
 // $$$$$$$$$$$$ DEBUG ENABLE SECTION $$$$$$$$$$$$$$$$
@@ -17,61 +19,61 @@ details. <http://www.gnu.org/licenses/>
 #include <Arduino.h>
 
 // These are our button constants
-#define PSB_SELECT 0x0001
-#define PSB_L3 0x0002
-#define PSB_R3 0x0004
-#define PSB_START 0x0008
-#define PSB_PAD_UP 0x0010
-#define PSB_PAD_RIGHT 0x0020
-#define PSB_PAD_DOWN 0x0040
-#define PSB_PAD_LEFT 0x0080
-#define PSB_L2 0x0100
-#define PSB_R2 0x0200
-#define PSB_L1 0x0400
-#define PSB_R1 0x0800
-#define PSB_GREEN 0x1000
-#define PSB_RED 0x2000
-#define PSB_BLUE 0x4000
-#define PSB_PINK 0x8000
-#define PSB_TRIANGLE 0x1000
-#define PSB_CIRCLE 0x2000
-#define PSB_CROSS 0x4000
-#define PSB_SQUARE 0x8000
+#define PSB_SELECT 0x0001u
+#define PSB_L3 0x0002u
+#define PSB_R3 0x0004u
+#define PSB_START 0x0008u
+#define PSB_PAD_UP 0x0010u
+#define PSB_PAD_RIGHT 0x0020u
+#define PSB_PAD_DOWN 0x0040u
+#define PSB_PAD_LEFT 0x0080u
+#define PSB_L2 0x0100u
+#define PSB_R2 0x0200u
+#define PSB_L1 0x0400u
+#define PSB_R1 0x0800u
+#define PSB_GREEN 0x1000u
+#define PSB_RED 0x2000u
+#define PSB_BLUE 0x4000u
+#define PSB_PINK 0x8000u
+#define PSB_TRIANGLE 0x1000u
+#define PSB_CIRCLE 0x2000u
+#define PSB_CROSS 0x4000u
+#define PSB_SQUARE 0x8000u
 
 // Guitar  button constants
-#define GREEN_FRET 0x0200
-#define RED_FRET 0x2000
-#define YELLOW_FRET 0x1000
-#define BLUE_FRET 0x4000
-#define ORANGE_FRET 0x8000
-#define STAR_POWER 0x0100
-#define UP_STRUM 0x0010
-#define DOWN_STRUM 0x0040
-#define WHAMMY_BAR 8
+#define PSG_GREEN_FRET 0x0200u
+#define PSG_RED_FRET 0x2000u
+#define PSG_YELLOW_FRET 0x1000u
+#define PSG_BLUE_FRET 0x4000u
+#define PSG_ORANGE_FRET 0x8000u
+#define PSG_STAR_POWER 0x0100u
+#define PSG_UP_STRUM 0x0010u
+#define PSG_DOWN_STRUM 0x0040u
+#define PSG_WHAMMY_BAR 8u
 
 // These are stick values
-#define PSS_RX 5
-#define PSS_RY 6
-#define PSS_LX 7
-#define PSS_LY 8
+#define PSS_RX 5u
+#define PSS_RY 6u
+#define PSS_LX 7u
+#define PSS_LY 8u
 
 // These are analog buttons
-#define PSAB_PAD_RIGHT 9
-#define PSAB_PAD_UP 11
-#define PSAB_PAD_DOWN 12
-#define PSAB_PAD_LEFT 10
-#define PSAB_L2 19
-#define PSAB_R2 20
-#define PSAB_L1 17
-#define PSAB_R1 18
-#define PSAB_GREEN 13
-#define PSAB_RED 14
-#define PSAB_BLUE 15
-#define PSAB_PINK 16
-#define PSAB_TRIANGLE 13
-#define PSAB_CIRCLE 14
-#define PSAB_CROSS 15
-#define PSAB_SQUARE 16
+#define PSAB_PAD_RIGHT 9u
+#define PSAB_PAD_UP 11u
+#define PSAB_PAD_DOWN 12u
+#define PSAB_PAD_LEFT 10u
+#define PSAB_L2 19u
+#define PSAB_R2 20u
+#define PSAB_L1 17u
+#define PSAB_R1 18u
+#define PSAB_GREEN 13u
+#define PSAB_RED 14u
+#define PSAB_BLUE 15u
+#define PSAB_PINK 16u
+#define PSAB_TRIANGLE 13u
+#define PSAB_CIRCLE 14u
+#define PSAB_CROSS 15u
+#define PSAB_SQUARE 16u
 
 template<typename T>
 constexpr void setBit(T &target, int bitNumber)
@@ -98,54 +100,6 @@ constexpr void toggleBit(T &target, int bitNumber)
 }
 
 namespace ps2 {
-namespace buttons{
-    inline constexpr uint16_t select = 0x0001;
-    inline constexpr uint16_t l3 = 0x0002;
-    inline constexpr uint16_t r3 = 0x0004;
-    inline constexpr uint16_t start = 0x0008;
-    inline constexpr uint16_t padUp = 0x0010;
-    inline constexpr uint16_t padRight = 0x0020;
-    inline constexpr uint16_t padDown = 0x0040;
-    inline constexpr uint16_t padLeft = 0x0080;
-    inline constexpr uint16_t l2 = 0x0100;
-    inline constexpr uint16_t r2 = 0x0200;
-    inline constexpr uint16_t l1 = 0x0400;
-    inline constexpr uint16_t r1 = 0x0800;
-    inline constexpr uint16_t green = 0x1000;
-    inline constexpr uint16_t red = 0x2000;
-    inline constexpr uint16_t blue = 0x4000;
-    inline constexpr uint16_t pink = 0x8000;
-    inline constexpr const uint16_t& triangle = green;
-    inline constexpr const uint16_t circle = red;
-    inline constexpr const uint16_t cross = blue;
-    inline constexpr const uint16_t square = pink;
-}
-
-namespace stick{
-    inline constexpr uint16_t rx = 5;
-    inline constexpr uint16_t ry = 6;
-    inline constexpr uint16_t lx = 7;
-    inline constexpr uint16_t ly = 8;
-}
-
-namespace analog_buttons{
-    inline constexpr uint16_t padRight = 9;
-    inline constexpr uint16_t padLeft = 10;
-    inline constexpr uint16_t padUp = 11;
-    inline constexpr uint16_t padDown = 12;
-    inline constexpr uint16_t l2 = 19;
-    inline constexpr uint16_t r2 = 20;
-    inline constexpr uint16_t l1 = 17;
-    inline constexpr uint16_t r1 = 18;
-    inline constexpr uint16_t green = 13;
-    inline constexpr uint16_t red = 14;
-    inline constexpr uint16_t blue = 15;
-    inline constexpr uint16_t pink = 16;
-    inline constexpr const uint16_t& triangle = green;
-    inline constexpr const uint16_t circle = red;
-    inline constexpr const uint16_t cross = blue;
-    inline constexpr const uint16_t square = pink;
-}
 
 namespace commands {
 inline constexpr byte startConfiguration[] = { 0x01, 0x43, 0x00, 0x01, 0x00 };
