@@ -6,14 +6,14 @@
 #include <stdio.h>
 #include <stdint.h>
 
-namespace ps2{
+namespace ps2 {
 
-byte Controller::configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin)
+ErrorCode Controller::configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin)
 {
     return configure(clockPin, commandPin, attentionPin, dataPin, false, false);
 }
 
-byte Controller::configure(
+ErrorCode Controller::configure(
     uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin, bool pressureMode, bool enableRumble)
 {
     const uint8_t oldSreg = SREG;
@@ -43,24 +43,25 @@ byte Controller::configure(
     // 73 or 79.
     readData();
     readData();
-    if (data_[1] != 0x41 && data_[1] != 0x73 && data_[1] != 0x79) {
+    if (data_[1] != correctMode1 && data_[1] != correctMode2 && data_[1] != correctMode3) {
 #ifdef PS2X_DEBUG
         Serial.println("Controller mode not matched or no controller found");
         Serial.print("Expected 0x41, 0x73 or 0x79, got ");
         Serial.println(PS2data[1], HEX);
 #endif
-        return 1;
+        return ErrorCode::WrongControllerMode;
     }
 
     return setControllerMode(pressureMode, enableRumble);
 }
 
-int Controller::setControllerMode(bool pressureMode, bool enableRumble)
+ErrorCode Controller::setControllerMode(bool pressureMode, bool enableRumble)
 {
     byte answer[sizeof(commands::readType)];
-    readDelay_            = 1; // readDelay_ will be saved to use later when reading data from controller.
-    const uint8_t oldSreg = SREG;
-    for (uint8_t attempt = 0; attempt <= 10; ++attempt) {
+    readDelay_                       = 1; // readDelay_ will be saved to use later when reading data from controller.
+    const uint8_t            oldSreg = SREG;
+    static constexpr uint8_t maxAttempts = 10;
+    for (uint8_t attempt = 0; attempt <= maxAttempts; ++attempt) {
         sendCommandString(commands::startConfiguration, sizeof(commands::startConfiguration)); // start config run
         delayMicroseconds(controlByteDelayUs);
 
@@ -80,7 +81,7 @@ int Controller::setControllerMode(bool pressureMode, bool enableRumble)
         setBit(*attentionOutputRegister_, attentionMask_); // HI disable joystick
         SREG = oldSreg;
 
-        controllerType_ = answer[3];
+        controllerType_ = static_cast<ControllerType>(answer[3]);
 
         sendCommandString(commands::setMode, sizeof(commands::setMode));
         if (enableRumble) {
@@ -96,28 +97,30 @@ int Controller::setControllerMode(bool pressureMode, bool enableRumble)
         readData();
 
         if (pressureMode) {
-            if (data_[1] == 0x79)
+            if (data_[1] == correctMode3) {
                 break;
-            if (data_[1] == 0x73)
-                return 3;
+            }
+            if (data_[1] == correctMode2) {
+                return ErrorCode::PressureModeError;
+            }
+        }
+        if (data_[1] == correctMode2) {
+            break;
         }
 
-        if (data_[1] == 0x73)
-            break;
-
-        if (attempt == 10) {
+        if (attempt == maxAttempts) {
 #ifdef PS2X_DEBUG
             Serial.println("Controller not accepting commands");
             Serial.print("mode stil set at");
             Serial.println(PS2data[1], HEX);
 #endif
-            return 2;
+            return ErrorCode::ControllerNotAcceptingCommands;
         }
 
         readDelay_ += 1;
     }
 
-    return 0;
+    return ErrorCode::Success;
 }
 
 boolean Controller::buttonPressed(uint16_t button) const
@@ -130,29 +133,19 @@ boolean Controller::buttonPressed(uint16_t button) const
 //     return (NewButtonState(button) & buttonPressed(button));
 // }
 
-boolean Controller::buttonsStateChanged()
+bool Controller::buttonsStateChanged() const
 {
     return ((previousButtonsState_ ^ buttonsState_) > 0);
 }
 
-boolean Controller::buttonStateChanged(unsigned int buttonId)
+bool Controller::buttonStateChanged(uint16_t buttonId) const
 {
     return (((previousButtonsState_ ^ buttonsState_) & buttonId) > 0);
 }
 
-// boolean PS2Controller::ButtonReleased(unsigned int buttonId)
-// {
-//     return ((buttonStateChanged(buttonId)) & ((~previousButtonsState_ & buttonId) > 0));
-// }
-
-// unsigned int PS2Controller::ButtonDataByte()
-// {
-//     return (~buttonsState_);
-// }
-
-byte Controller::analogButtonState(byte  buttonId)
+byte Controller::analogButtonState(uint16_t buttonId) const
 {
-    return data_[ buttonId];
+    return data_[buttonId];
 }
 
 byte Controller::sendByte(byte inputByte)
@@ -194,7 +187,7 @@ void Controller::readData(boolean motor1, byte motor2)
     uint8_t old_sreg = SREG;
 
     const unsigned long msSinceLastReading = millis() - lastDataReadTimestamp_;
-    if (msSinceLastReading > 1500) { // Waited too long, reconfiguration needed.
+    if (msSinceLastReading > readPeriodUntilReconfiguration) { // Waited too long, reconfiguration needed.
         reconfigureController();
     }
     if (msSinceLastReading < readDelay_) { // Waited too short.
@@ -214,13 +207,13 @@ void Controller::readData(boolean motor1, byte motor2)
     if (motor2) {
         motor2 = map(motor2, 0, 0xFF, 0x40, 0xFF); // Values lower than 0x40 will not trigger motor.
     }
-    byte command[baseDataSize_] = { 0x01, 0x42, 0, motor1, motor2, 0, 0, 0, 0 };
+    byte command[baseDataSize] = { 0x01, 0x42, 0, motor1, motor2, 0, 0, 0, 0 };
 
-    for (uint8_t i = 0; i < baseDataSize_; ++i) {
+    for (uint8_t i = 0; i < baseDataSize; ++i) {
         data_[i] = sendByte(command[i]);
     }
     if (data_[1] == 0x79) { // if controller is in full data return mode, get the rest of data
-        for (uint8_t i = 0; i < auxDataSize_; ++i) {
+        for (uint8_t i = 0; i < auxDataSize; ++i) {
             data_[i + 9] = sendByte(0);
         }
     }
@@ -301,15 +294,9 @@ uint8_t Controller::maskToBitNum(uint8_t mask)
     return 0;
 }
 
-byte Controller::type() const
+ControllerType Controller::type() const
 {
-    if (controllerType_ == 0x03) {
-        return 1;
-    } else if (controllerType_ == 0x01) {
-        return 2;
-    }
-
-    return 0;
+    return controllerType_;
 }
 
 void Controller::enableRumble()
@@ -327,7 +314,7 @@ bool Controller::enablePressures()
     sendCommandString(commands::stopConfiguration, sizeof(commands::stopConfiguration));
 
     readData();
-    //readData();
+    // readData();
 
     if (data_[1] != 0x79)
         return false;
@@ -349,4 +336,4 @@ void Controller::reconfigureController()
     sendCommandString(commands::stopConfiguration, sizeof(commands::stopConfiguration));
 }
 
-}
+} // namespace ps2

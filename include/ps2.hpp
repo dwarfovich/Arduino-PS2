@@ -18,7 +18,7 @@ The original library code is inside archive/OriginalPS2Lib folder.
 
 #include <Arduino.h>
 
-// These are our button constants
+// Regular buttons.
 #define PSB_SELECT 0x0001u
 #define PSB_L3 0x0002u
 #define PSB_R3 0x0004u
@@ -40,7 +40,7 @@ The original library code is inside archive/OriginalPS2Lib folder.
 #define PSB_CROSS 0x4000u
 #define PSB_SQUARE 0x8000u
 
-// Guitar  button constants
+// GuitarHero buttons.
 #define PSG_GREEN_FRET 0x0200u
 #define PSG_RED_FRET 0x2000u
 #define PSG_YELLOW_FRET 0x1000u
@@ -51,13 +51,13 @@ The original library code is inside archive/OriginalPS2Lib folder.
 #define PSG_DOWN_STRUM 0x0040u
 #define PSG_WHAMMY_BAR 8u
 
-// These are stick values
+// Stick values.
 #define PSS_RX 5u
 #define PSS_RY 6u
 #define PSS_LX 7u
 #define PSS_LY 8u
 
-// These are analog buttons
+// Analog buttons.
 #define PSAB_PAD_RIGHT 9u
 #define PSAB_PAD_UP 11u
 #define PSAB_PAD_DOWN 12u
@@ -110,40 +110,60 @@ inline constexpr byte enableRumble[]       = { 0x01, 0x4D, 0x00, 0x00, 0x01 };
 inline constexpr byte readType[]           = { 0x01, 0x45, 0x00, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A, 0x5A };
 } // namespace commands
 
+enum class ErrorCode : uint8_t
+{
+    Success,
+    WrongControllerMode, // Controller mode not matched or no controller found.
+    ControllerNotAcceptingCommands,
+    PressureModeError
+};
+
+enum class ControllerType : uint8_t
+{
+    Unknown,
+    DualShock,
+    GuitarHero,
+    WirelessDualShock
+};
+
 class Controller
 {
 public:
-    byte configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin);
-    byte configure(uint8_t clockPin,
-                   uint8_t commandPin,
-                   uint8_t attentionPin,
-                   uint8_t dataPin,
-                   bool    pressureMode,
-                   bool    enableRumble);
-    byte type() const;
-    bool buttonPressed(uint16_t buttonId) const;
-    bool buttonsStateChanged();
-    bool buttonStateChanged(unsigned int buttonId);
-    void readData();
-    void readData(bool motor1, byte motor2);
-    void enableRumble();
-    bool enablePressures();
-    byte analogButtonState(byte buttonId);
+    ErrorCode      configure(uint8_t clockPin, uint8_t commandPin, uint8_t attentionPin, uint8_t dataPin);
+    ErrorCode      configure(uint8_t clockPin,
+                             uint8_t commandPin,
+                             uint8_t attentionPin,
+                             uint8_t dataPin,
+                             bool    pressureMode,
+                             bool    enableRumble);
+    ControllerType type() const;
+    bool           buttonPressed(uint16_t buttonId) const;
+    bool           buttonsStateChanged() const;
+    bool           buttonStateChanged(uint16_t buttonId) const;
+    byte           analogButtonState(uint16_t buttonId) const;
+    void           readData();
+    void           readData(bool motor1, byte motor2);
+    void           enableRumble();
+    bool           enablePressures();
 
 private: // methods
-    int     setControllerMode(bool countPressures, bool enableRumble);
-    byte    sendByte(byte inputByte);
-    void    sendCommandString(const byte string[], byte size);
-    void    reconfigureController();
-    uint8_t maskToBitNum(uint8_t);
+    ErrorCode setControllerMode(bool countPressures, bool enableRumble);
+    byte      sendByte(byte inputByte);
+    void      sendCommandString(const byte string[], byte size);
+    void      reconfigureController();
+    uint8_t   maskToBitNum(uint8_t);
 
 private: // data
-    inline static constexpr unsigned long controlDelayUs     = 4;
-    inline static constexpr unsigned long controlByteDelayUs = 3;
-    inline static constexpr uint8_t       baseDataSize_      = 9;
-    inline static constexpr uint8_t       auxDataSize_       = 12;
+    inline static constexpr unsigned long readPeriodUntilReconfiguration = 1500;
+    inline static constexpr unsigned long controlDelayUs                 = 4;
+    inline static constexpr unsigned long controlByteDelayUs             = 3;
+    inline static constexpr uint8_t       baseDataSize                   = 9;
+    inline static constexpr uint8_t       auxDataSize                    = 12;
+    inline static constexpr uint8_t       correctMode1                   = 0x41;
+    inline static constexpr uint8_t       correctMode2                   = 0x73;
+    inline static constexpr uint8_t       correctMode3                   = 0x79;
 
-    unsigned char  data_[baseDataSize_ + auxDataSize_];
+    unsigned char  data_[baseDataSize + auxDataSize];
     unsigned int   previousButtonsState_;
     unsigned int   buttonsState_;
     byte           clockMask_;
@@ -156,7 +176,7 @@ private: // data
     volatile byte *dataInputRegister_;
     unsigned long  lastDataReadTimestamp_;
     byte           readDelay_;
-    byte           controllerType_;
+    ControllerType controllerType_;
     bool           enableRumble_;
     bool           pressureMode_;
 };

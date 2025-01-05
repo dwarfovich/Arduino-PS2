@@ -11,8 +11,8 @@ constexpr unsigned long serialMonitorStartDelay = 300;
 constexpr unsigned long readControllerDataDelay = 50;
 
 ps2::Controller ps2x;
-int           error          = 0;
-byte          controllerType = 0;
+ps2::ErrorCode           error         ;
+ps2::ControllerType          controllerType ;
 byte          vibrate        = 0;
 
 void setup()
@@ -20,7 +20,7 @@ void setup()
     Serial.begin(baudRate);
     delay(serialMonitorStartDelay);
     error = ps2x.configure(clockPin, commandPin, selectPin, dataPin, pressureMode, enableRumble);
-    if (error == 0) {
+    if (error == ps2::ErrorCode::Success) {
         Serial.println("Found Controller, configured successful ");
         Serial.println("pressures = ");
         if (pressureMode)
@@ -36,30 +36,30 @@ void setup()
         Serial.println("Try out all the buttons, X will vibrate the controller, faster as you press harder;");
         Serial.println("holding L1 or R1 will print out the analog stick values.");
         Serial.println("Note: Go to www.billporter.info for updates and to report bugs.");
-    } else if (error == 1) {
+    } else if (error == ps2::ErrorCode::WrongControllerMode) {
         Serial.println("No controller found, check wiring, see readme.txt to enable debug. visit www.billporter.info "
                        "for troubleshooting tips");
-    } else if (error == 2) {
+    } else if (error == ps2::ErrorCode::ControllerNotAcceptingCommands) {
         Serial.println("Controller found but not accepting commands. see readme.txt to enable debug. Visit "
                        "www.billporter.info for troubleshooting tips");
-    } else if (error == 3) {
+    } else if (error == ps2::ErrorCode::PressureModeError) {
         Serial.println("Controller refusing to enter Pressures mode, may not support it. ");
     }
 
     controllerType = ps2x.type();
     switch (controllerType) {
-        case 0: Serial.print("Unknown Controller type found "); break;
-        case 1: Serial.print("DualShock Controller found "); break;
-        case 2: Serial.print("GuitarHero Controller found "); break;
-        case 3: Serial.print("Wireless Sony DualShock Controller found "); break;
+        case ps2::ControllerType::Unknown: Serial.print("Unknown Controller type found "); break;
+        case ps2::ControllerType::DualShock: Serial.print("DualShock Controller found "); break;
+        case ps2::ControllerType::GuitarHero: Serial.print("GuitarHero Controller found "); break;
+        case ps2::ControllerType::WirelessDualShock: Serial.print("Wireless Sony DualShock Controller found "); break;
     }
 }
 
 void loop()
 {
-    if (error == 1)
+    if (error == ps2::ErrorCode::WrongControllerMode)
         return;
-    if (error == 2) {
+    if (error == ps2::ErrorCode::PressureModeError) {
         ps2x.readData();
         if (ps2x.buttonPressed(PSG_GREEN_FRET))
             Serial.println("Green Fret Pressed");
