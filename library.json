@@ -16,5 +16,11 @@
   "dependencies": {
   },
   "frameworks": "*",
-  "platforms": "*"
+  "platforms": "*",
+  "build": {
+    "libArchive": false,
+    "flags": [
+      "-I ./include/ps2"
+    ]
+  }
 }
