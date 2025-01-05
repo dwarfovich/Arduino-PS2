@@ -20,7 +20,7 @@
   "build": {
     "libArchive": false,
     "flags": [
-      "-I ./include/ps2"
+      "-I./include/ps2"
     ]
   }
 }
