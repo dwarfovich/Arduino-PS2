@@ -1,4 +1,4 @@
-#include "ps2/ps2.hpp"
+#include "ps2.hpp"
 
 constexpr uint8_t       selectPin               = 10;
 constexpr uint8_t       commandPin              = 11;
