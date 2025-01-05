@@ -147,7 +147,7 @@ public:
     bool           enablePressures();
 
 private: // methods
-    ErrorCode setControllerMode(bool countPressures, bool enableRumble);
+    ErrorCode setControllerMode(bool pressureMode, bool enableRumble);
     byte      sendByte(byte inputByte);
     void      sendCommandString(const byte string[], byte size);
     void      reconfigureController();
